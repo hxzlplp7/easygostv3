@@ -4,6 +4,8 @@
 
 ## 🚀 快速开始
 
+### Linux VPS (Root 环境)
+
 ```bash
 # 下载脚本
 wget -O gost.sh https://raw.githubusercontent.com/hxzlplp7/GostXray/main/gost.sh
@@ -13,6 +15,22 @@ chmod +x gost.sh && ./gost.sh
 ```
 
 安装完成后，可以在任意位置输入 `gost` 进入管理菜单！
+
+### Serv00 / HostUno (FreeBSD 非 Root 环境)
+
+```bash
+# 下载 Serv00 专用版本
+curl -sL https://raw.githubusercontent.com/hxzlplp7/GostXray/main/gost-serv00.sh -o gost.sh
+
+# 运行
+chmod +x gost.sh && ./gost.sh
+```
+
+> ⚠️ **Serv00 版本特点:**
+> - 专为 FreeBSD 非 root 环境设计
+> - 安装到用户目录 `~/.gost/`
+> - 使用进程管理替代 systemd
+> - 不支持 Xray (无 root 权限)
 
 ## ✨ 功能特性
 

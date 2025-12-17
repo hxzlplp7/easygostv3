@@ -6,6 +6,8 @@ A powerful relay/transit script supporting GOST v3 and Xray dokodemo-door with a
 
 ## 🚀 Quick Start
 
+### Linux VPS (Root Environment)
+
 ```bash
 # Download script
 wget -O gost.sh https://raw.githubusercontent.com/hxzlplp7/GostXray/main/gost.sh
@@ -15,6 +17,22 @@ chmod +x gost.sh && ./gost.sh
 ```
 
 After installation, simply type `gost` anywhere to access the management menu!
+
+### Serv00 / HostUno (FreeBSD Non-Root Environment)
+
+```bash
+# Download Serv00 version
+curl -sL https://raw.githubusercontent.com/hxzlplp7/GostXray/main/gost-serv00.sh -o gost.sh
+
+# Run
+chmod +x gost.sh && ./gost.sh
+```
+
+> ⚠️ **Serv00 Version Features:**
+> - Designed for FreeBSD non-root environment
+> - Installs to user directory `~/.gost/`
+> - Uses process management instead of systemd
+> - Xray not supported (no root privileges)
 
 ## ✨ Features
 
