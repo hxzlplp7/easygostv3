@@ -1,7 +1,7 @@
 #!/bin/bash
 # GOST v3 + Xray 任意门 中转脚本
 # 支持协议: VLESS, VMess, Trojan, Shadowsocks, Hysteria2, TUIC, AnyTLS, SOCKS, HTTP
-# 快捷命令: gost
+# 快捷命令: gostxray
 
 Green_font_prefix="\033[32m" && Red_font_prefix="\033[31m" && Yellow_font_prefix="\033[33m"
 Blue_font_prefix="\033[34m" && Purple_font_prefix="\033[35m" && Cyan_font_prefix="\033[36m"
@@ -17,7 +17,7 @@ gost_conf_path="/etc/gost3/config.yaml"
 xray_conf_path="/etc/xray/config.json"
 raw_conf_path="/etc/gost3/rawconf"
 port_conf_path="/etc/gost3/ports.conf"
-script_path="/usr/local/bin/gost"
+script_path="/usr/local/bin/gostxray"
 
 # ==================== 工具函数 ====================
 check_root() {
@@ -77,7 +77,7 @@ install_shortcut() {
     chmod +x "$script_path"
     
     echo -e "${Info} 快捷命令安装完成！"
-    echo -e "${Tip} 现在可以在任意位置输入 ${Green_font_prefix}gost${Font_color_suffix} 进入管理菜单"
+    echo -e "${Tip} 现在可以在任意位置输入 ${Green_font_prefix}gostxray${Font_color_suffix} 进入管理菜单"
 }
 
 uninstall_shortcut() {

@@ -2,12 +2,14 @@
 # GOST v3 + Xray 中转脚本 - Serv00/HostUno 版本
 # 适用于 FreeBSD 非 root 环境
 # 支持协议: VLESS, VMess, Trojan, Shadowsocks, Hysteria2, TUIC, SOCKS, HTTP
+# 快捷命令: gostxray
 
 Green="\033[32m" && Red="\033[31m" && Yellow="\033[33m"
 Cyan="\033[36m" && Reset="\033[0m"
 Info="${Green}[信息]${Reset}"
 Error="${Red}[错误]${Reset}"
 Warning="${Yellow}[警告]${Reset}"
+Tip="${Cyan}[提示]${Reset}"
 
 shell_version="3.1.0-serv00"
 gost_version="3.0.0"
@@ -20,11 +22,32 @@ GOST_CONF="$GOST_DIR/config.yaml"
 RAW_CONF="$GOST_DIR/rawconf"
 PORT_CONF="$GOST_DIR/ports.conf"
 PID_FILE="$GOST_DIR/gost.pid"
+SCRIPT_PATH="$HOME/bin/gostxray"
 
 # ==================== 初始化 ====================
 init_dirs() {
     mkdir -p "$GOST_DIR"
+    mkdir -p "$HOME/bin"
     touch "$RAW_CONF" "$PORT_CONF"
+}
+
+# ==================== 快捷命令安装 ====================
+install_shortcut() {
+    echo -e "${Info} 安装快捷命令..."
+    
+    local current_script=$(readlink -f "$0" 2>/dev/null || echo "$0")
+    
+    cp "$current_script" "$SCRIPT_PATH"
+    chmod +x "$SCRIPT_PATH"
+    
+    # 添加到 PATH
+    if ! grep -q 'HOME/bin' "$HOME/.profile" 2>/dev/null; then
+        echo 'export PATH="$HOME/bin:$PATH"' >> "$HOME/.profile"
+    fi
+    
+    echo -e "${Info} 快捷命令安装完成！"
+    echo -e "${Tip} 请运行: ${Green}source ~/.profile${Reset}"
+    echo -e "${Tip} 然后可以输入 ${Green}gostxray${Reset} 进入管理菜单"
 }
 
 # ==================== 系统检测 ====================
@@ -707,10 +730,12 @@ ${Green}--------------------------------------------------------${Reset}
  ${Green}8.${Reset}  查看当前配置
  ${Green}9.${Reset}  删除配置
 ${Green}--------------------------------------------------------${Reset}
+ ${Green}10.${Reset} 安装快捷命令 (gostxray)
+${Green}--------------------------------------------------------${Reset}
  ${Green}0.${Reset}  退出
 ${Green}========================================================${Reset}
 "
-    read -p " 请选择 [0-9]: " num
+    read -p " 请选择 [0-10]: " num
     
     case "$num" in
         1) install_gost ;;
@@ -728,6 +753,7 @@ ${Green}========================================================${Reset}
         7) add_relay_config ;;
         8) show_config ;;
         9) delete_config ;;
+        10) install_shortcut ;;
         0) exit 0 ;;
         *) echo -e "${Error} 无效选择" ;;
     esac

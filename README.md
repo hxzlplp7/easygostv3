@@ -14,7 +14,7 @@ wget -O gost.sh https://raw.githubusercontent.com/hxzlplp7/GostXray/main/gost.sh
 chmod +x gost.sh && ./gost.sh
 ```
 
-安装完成后，可以在任意位置输入 `gost` 进入管理菜单！
+安装完成后，可以在任意位置输入 `gostxray` 进入管理菜单！
 
 ### Serv00 / HostUno (FreeBSD 非 Root 环境)
 
@@ -38,7 +38,7 @@ chmod +x gost.sh && ./gost.sh
 |------|------|
 | **GOST v3** | 适配最新 GOST v3，支持 TCP+UDP 双协议转发 |
 | **Xray 任意门** | 集成 dokodemo-door，实现透明代理中转 |
-| **快捷命令** | 安装后输入 `gost` 即可进入管理菜单 |
+| **快捷命令** | 安装后输入 `gostxray` 即可进入管理菜单 |
 | **协议解析** | 自动识别并解析 9 种主流代理协议链接 |
 | **中转链接生成** | 自动生成中转后的节点链接 |
 | **批量添加** | 支持批量导入多个节点链接 |

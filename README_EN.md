@@ -16,7 +16,7 @@ wget -O gost.sh https://raw.githubusercontent.com/hxzlplp7/GostXray/main/gost.sh
 chmod +x gost.sh && ./gost.sh
 ```
 
-After installation, simply type `gost` anywhere to access the management menu!
+After installation, simply type `gostxray` anywhere to access the management menu!
 
 ### Serv00 / HostUno (FreeBSD Non-Root Environment)
 
@@ -40,7 +40,7 @@ chmod +x gost.sh && ./gost.sh
 |---------|-------------|
 | **GOST v3** | Latest GOST v3 with TCP+UDP forwarding |
 | **Xray Dokodemo** | Transparent proxy relay via dokodemo-door |
-| **Quick Command** | Type `gost` to access menu after installation |
+| **Quick Command** | Type `gostxray` to access menu after installation |
 | **Auto Parsing** | Automatically parse 8+ proxy protocol links |
 | **Link Generation** | Auto-generate relay node links |
 | **Batch Import** | Import multiple node links at once |
