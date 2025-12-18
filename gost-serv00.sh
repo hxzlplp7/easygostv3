@@ -423,13 +423,13 @@ check_unsupported_protocol() {
     local link="$1"
     local proto="$2"
     
-    # 检查 Reality 协议
+    # 检查 Reality 协议 - 这个确实无法中转
     if [[ "$link" == *"reality"* ]] || [[ "$link" == *"pbk="* ]]; then
         echo -e ""
         echo -e "${Red}✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖${Reset}"
         echo -e "${Red}  警告: 检测到 VLESS-Reality 协议!${Reset}"
         echo -e "${Red}✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖${Reset}"
-        echo -e "${Yellow}Reality 协议无法通过 TCP 中转！${Reset}"
+        echo -e "${Yellow}Reality 协议无法通过中转！${Reset}"
         echo -e "${Yellow}原因: Reality 会验证服务器 IP，中转后 IP 变化导致验证失败${Reset}"
         echo -e ""
         echo -e "${Cyan}建议使用以下可中转协议:${Reset}"
@@ -437,19 +437,17 @@ check_unsupported_protocol() {
         echo -e "  ✓ VMess + WS + TLS"
         echo -e "  ✓ Trojan"
         echo -e "  ✓ Shadowsocks"
+        echo -e "  ✓ Hysteria2 (UDP)"
+        echo -e "  ✓ TUIC (UDP)"
         echo -e ""
         return 1
     fi
     
-    # 检查 UDP 协议
+    # UDP 协议提示 (现在支持了)
     if [[ "$proto" == "hysteria2" ]] || [[ "$proto" == "tuic" ]]; then
         echo -e ""
-        echo -e "${Red}✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖${Reset}"
-        echo -e "${Red}  警告: 检测到 ${proto^^} 协议!${Reset}"
-        echo -e "${Red}✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖${Reset}"
-        echo -e "${Yellow}${proto^^} 需要 UDP 端口，Serv00 环境无法绑定 UDP!${Reset}"
-        echo -e ""
-        return 1
+        echo -e "${Cyan}提示: ${proto^^} 使用 UDP 协议${Reset}"
+        echo -e "${Cyan}将自动添加 UDP 端口并配置 UDP 中转${Reset}"
     fi
     
     return 0
@@ -580,20 +578,20 @@ EOF
 }
 
 # ==================== GOST 配置生成 ====================
-# 注意: Serv00/HostUno 非 root 环境无法绑定 UDP 端口，只使用 TCP
+# 支持 TCP 和 UDP，类型由 devil 端口类型决定
 generate_gost_config() {
     local port="$1"
     local host="$2"
     local dport="$3"
+    local proto="${4:-tcp}"  # 默认 TCP
     
-    # Serv00 环境只能使用 TCP (非 root 无法绑定 UDP)
     cat << EOF
   - name: relay-${port}
     addr: ":${port}"
     handler:
-      type: tcp
+      type: ${proto}
     listener:
-      type: tcp
+      type: ${proto}
     forwarder:
       nodes:
         - name: target
@@ -605,8 +603,9 @@ add_relay() {
     local port="$1"
     local host="$2"
     local dport="$3"
+    local proto="${4:-tcp}"  # 默认 TCP
     
-    local config=$(generate_gost_config "$port" "$host" "$dport")
+    local config=$(generate_gost_config "$port" "$host" "$dport" "$proto")
     
     if grep -q "^services: \[\]$" "$GOST_CONF" 2>/dev/null; then
         cat > "$GOST_CONF" << EOF
@@ -617,7 +616,7 @@ EOF
         echo "$config" >> "$GOST_CONF"
     fi
     
-    echo "gost|tcp|${port}|${host}|${dport}" >> "$RAW_CONF"
+    echo "gost|${proto}|${port}|${host}|${dport}" >> "$RAW_CONF"
 }
 
 # ==================== GOST 进程管理 ====================
@@ -804,11 +803,9 @@ add_relay_config() {
     fi
     
     # 端口配置 - 使用 devil 端口管理
-    # 注意: Serv00 版本只支持 TCP 中转，所以强制使用 TCP 端口
-    local_port_type="tcp"  # 强制 TCP
-    
+    # 端口类型根据协议决定 (TCP 或 UDP)
     echo -e ""
-    echo -e "${Info} 端口配置 (Serv00 只支持 TCP 中转):"
+    echo -e "${Info} 端口配置 (类型: ${port_type^^}):"
     echo -e "[1] 随机端口 + 自动添加 Devil 端口"
     echo -e "[2] 手动指定端口"
     read -p "请选择 [默认1]: " port_mode
@@ -816,19 +813,19 @@ add_relay_config() {
     
     case $port_mode in
         1)
-            local_port=$(get_random_devil_port "$local_port_type" "gost-relay" 10000 65000)
+            local_port=$(get_random_devil_port "$port_type" "gost-relay" 10000 65000)
             if [ -z "$local_port" ]; then
                 echo -e "${Error} 获取端口失败"
                 return 1
             fi
-            echo -e "${Info} 分配端口: ${Green}$local_port${Reset}"
+            echo -e "${Info} 分配端口: ${Green}$local_port (${port_type^^})${Reset}"
             ;;
         2)
             read -p "请输入端口: " local_port
             if ! check_port $local_port; then
                 echo -e "${Warning} 端口可能已被占用"
             fi
-            add_devil_port "$local_port" "$local_port_type" "gost-relay"
+            add_devil_port "$local_port" "$port_type" "gost-relay"
             ;;
         *)
             echo -e "${Error} 无效选择"
@@ -842,7 +839,7 @@ add_relay_config() {
     local my_ip=$(curl -s4m5 ip.sb 2>/dev/null || curl -s4m5 ifconfig.me 2>/dev/null)
     [ -z "$my_ip" ] && my_ip="YOUR_IP"
     
-    add_relay "$local_port" "$target_host" "$target_port"
+    add_relay "$local_port" "$target_host" "$target_port" "$port_type"
     restart_gost
     
     echo -e ""
@@ -995,7 +992,7 @@ show_menu() {
 ${Green}========================================================${Reset}
    GOST v3 中转脚本 - Serv00/HostUno 版 ${Red}[${shell_version}]${Reset}
 ${Green}========================================================${Reset}
- ${Cyan}支持: VLESS VMess Trojan SS (不支持: Reality Hy2 TUIC)${Reset}
+ ${Cyan}支持: VLESS VMess Trojan SS Hy2 TUIC (不支持: Reality)${Reset}
 ${Green}--------------------------------------------------------${Reset}
  ${Green}1.${Reset}  安装 GOST v3
  ${Green}2.${Reset}  卸载 GOST v3
