@@ -11,7 +11,7 @@ Error="${Red}[错误]${Reset}"
 Warning="${Yellow}[警告]${Reset}"
 Tip="${Cyan}[提示]${Reset}"
 
-shell_version="3.2.0-serv00"
+shell_version="3.2.1-serv00"
 gost_version="3.0.0"
 
 # Serv00 用户目录
@@ -22,6 +22,7 @@ GOST_CONF="$GOST_DIR/config.yaml"
 RAW_CONF="$GOST_DIR/rawconf"
 PORT_CONF="$GOST_DIR/ports.conf"
 PID_FILE="$GOST_DIR/gost.pid"
+LOG_FILE="$GOST_DIR/gost.log"
 SCRIPT_PATH="$HOME/bin/gostxray"
 
 # ==================== 初始化 ====================
@@ -650,6 +651,71 @@ status_gost() {
     return 1
 }
 
+# ==================== 日志管理 ====================
+show_log_menu() {
+    echo -e ""
+    echo -e "${Green}========== 日志管理 ==========${Reset}"
+    echo -e "[1] 查看最新日志 (50行)"
+    echo -e "[2] 查看全部日志"
+    echo -e "[3] 实时查看日志 (Ctrl+C 退出)"
+    echo -e "[4] 清空日志"
+    echo -e "[0] 返回"
+    echo -e "${Green}==============================${Reset}"
+    read -p "请选择 [0-4]: " log_choice
+    
+    case "$log_choice" in
+        1)
+            if [ -f "$LOG_FILE" ]; then
+                echo -e ""
+                echo -e "${Cyan}========== 最新 50 行日志 ==========${Reset}"
+                tail -50 "$LOG_FILE"
+                echo -e "${Cyan}=================================${Reset}"
+            else
+                echo -e "${Warning} 日志文件不存在"
+            fi
+            ;;
+        2)
+            if [ -f "$LOG_FILE" ]; then
+                echo -e ""
+                echo -e "${Cyan}========== 全部日志 ==========${Reset}"
+                cat "$LOG_FILE"
+                echo -e "${Cyan}============================${Reset}"
+                echo -e "${Info} 日志文件: $LOG_FILE"
+                echo -e "${Info} 文件大小: $(du -h "$LOG_FILE" | cut -f1)"
+            else
+                echo -e "${Warning} 日志文件不存在"
+            fi
+            ;;
+        3)
+            if [ -f "$LOG_FILE" ]; then
+                echo -e ""
+                echo -e "${Info} 实时查看日志，按 Ctrl+C 退出..."
+                echo -e "${Cyan}=================================${Reset}"
+                tail -f "$LOG_FILE"
+            else
+                echo -e "${Warning} 日志文件不存在"
+            fi
+            ;;
+        4)
+            if [ -f "$LOG_FILE" ]; then
+                read -p "确定要清空日志吗? [y/N]: " confirm
+                if [[ $confirm =~ ^[Yy]$ ]]; then
+                    cat /dev/null > "$LOG_FILE"
+                    echo -e "${Info} 日志已清空"
+                fi
+            else
+                echo -e "${Warning} 日志文件不存在"
+            fi
+            ;;
+        0|"")
+            return
+            ;;
+        *)
+            echo -e "${Error} 无效选择"
+            ;;
+    esac
+}
+
 # ==================== 添加中转 ====================
 add_relay_config() {
     echo -e ""
@@ -904,13 +970,7 @@ ${Green}========================================================${Reset}
         3) start_gost ;;
         4) stop_gost ;;
         5) restart_gost ;;
-        6) 
-            if [ -f "$GOST_DIR/gost.log" ]; then
-                tail -50 "$GOST_DIR/gost.log"
-            else
-                echo -e "${Warning} 无日志"
-            fi
-            ;;
+        6) show_log_menu ;;
         7) add_relay_config ;;
         8) show_config ;;
         9) delete_config ;;
