@@ -326,19 +326,19 @@ EOF
     
     # 创建在 chroot 中运行 gostxray 的快捷命令
     cat > "$USER_HOME/bin/gostxray-root" << 'EOF'
-#!/bin/bash
+#!/bin/sh
 # 在 MrChrootBSD root 环境中运行 GostXray
 MRCHROOT_DIR="$HOME/.mrchroot"
 CHROOT_DIR="$MRCHROOT_DIR/chroot"
 
 cd "$MRCHROOT_DIR"
-./mrchroot "$CHROOT_DIR" /root/gost-root.sh
+./mrchroot "$CHROOT_DIR" /bin/sh /root/gost-root.sh
 EOF
     chmod +x "$USER_HOME/bin/gostxray-root"
     
     # 创建在 chroot 中安装 x-ui 的快捷命令
     cat > "$USER_HOME/bin/xui-root" << 'EOF'
-#!/bin/bash
+#!/bin/sh
 # 在 MrChrootBSD root 环境中安装/管理 X-UI
 MRCHROOT_DIR="$HOME/.mrchroot"
 CHROOT_DIR="$MRCHROOT_DIR/chroot"
@@ -346,11 +346,11 @@ CHROOT_DIR="$MRCHROOT_DIR/chroot"
 cd "$MRCHROOT_DIR"
 
 if [ "$1" = "install" ]; then
-    ./mrchroot "$CHROOT_DIR" /root/x-ui-install.sh
+    ./mrchroot "$CHROOT_DIR" /bin/sh /root/x-ui-install.sh
 elif [ "$1" = "menu" ] || [ -z "$1" ]; then
-    ./mrchroot "$CHROOT_DIR" /root/x-ui.sh
+    ./mrchroot "$CHROOT_DIR" /bin/sh /root/x-ui.sh
 else
-    ./mrchroot "$CHROOT_DIR" /root/x-ui.sh "$@"
+    ./mrchroot "$CHROOT_DIR" /bin/sh /root/x-ui.sh "$@"
 fi
 EOF
     chmod +x "$USER_HOME/bin/xui-root"
@@ -529,7 +529,7 @@ ${Green}========================================================${Reset}
         6)
             if [ -f "$MRCHROOT_BIN" ] && [ -f "$CHROOT_DIR/root/gost-root.sh" ]; then
                 cd "$MRCHROOT_DIR"
-                ./mrchroot "$CHROOT_DIR" /root/gost-root.sh
+                ./mrchroot "$CHROOT_DIR" /bin/sh /root/gost-root.sh
             else
                 echo -e "${Error} GostXray 未安装到 chroot 环境"
             fi
@@ -537,7 +537,7 @@ ${Green}========================================================${Reset}
         7)
             if [ -f "$MRCHROOT_BIN" ] && [ -f "$CHROOT_DIR/root/x-ui-install.sh" ]; then
                 cd "$MRCHROOT_DIR"
-                ./mrchroot "$CHROOT_DIR" /root/x-ui-install.sh
+                ./mrchroot "$CHROOT_DIR" /bin/sh /root/x-ui-install.sh
             else
                 echo -e "${Error} X-UI 安装脚本未安装到 chroot 环境"
             fi
