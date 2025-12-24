@@ -11,7 +11,7 @@ Error="${Red}[错误]${Reset}"
 Warning="${Yellow}[警告]${Reset}"
 Tip="${Cyan}[提示]${Reset}"
 
-shell_version="3.3.0-serv00"
+shell_version="3.4.0-serv00"
 gost_version="3.0.0"
 
 # Serv00 用户目录
@@ -808,16 +808,6 @@ add_relay_config() {
         IFS='|' read -r target_host target_port <<< "$target"
         
         echo -e "${Info} 目标: ${Green}${target_host}:${target_port}${Reset}"
-        
-        # 检查目标端口连通性
-        if ! check_port_connectivity "$target_host" "$target_port" 3; then
-            echo -e "${Warning} 目标端口不可达，可能原因:"
-            echo -e "  1. 目标服务器防火墙拦截"
-            echo -e "  2. 网络不通或延迟过高"
-            echo -e "  3. 目标端口未开放"
-            read -p "是否仍要添加? [y/N]: " confirm
-            [[ ! $confirm =~ ^[Yy]$ ]] && return 1
-        fi
     else
         read -p "目标地址: " target_host
         read -p "目标端口: " target_port
@@ -886,6 +876,110 @@ add_relay_config() {
         echo -e ""
         echo -e "${Info} 中转后的链接:"
         echo -e "${Cyan}${relay_link}${Reset}"
+    fi
+}
+
+# ==================== 批量添加中转 ====================
+batch_add_relay() {
+    echo -e ""
+    echo -e "${Info} 批量添加中转配置"
+    echo -e "${Tip} 请输入节点链接，每行一个，输入空行结束"
+    echo -e "-----------------------------------"
+    
+    local links=()
+    while true; do
+        read -p "> " line
+        if [ -z "$line" ]; then
+            break
+        fi
+        links+=("$line")
+    done
+    
+    if [ ${#links[@]} -eq 0 ]; then
+        echo -e "${Error} 没有输入任何链接"
+        return 1
+    fi
+    
+    echo -e ""
+    echo -e "${Info} 共输入 ${#links[@]} 个链接"
+    
+    echo -e ""
+    echo -e "${Info} 端口分配方式:"
+    echo -e "[1] 从指定端口开始递增"
+    echo -e "[2] 随机分配"
+    read -p "请选择 [默认1]: " port_mode
+    port_mode=${port_mode:-1}
+    
+    local start_port=10000
+    if [ "$port_mode" == "1" ]; then
+        read -p "请输入起始端口 [默认10000]: " start_port
+        start_port=${start_port:-10000}
+    fi
+    
+    local my_ip=$(curl -s4m5 ip.sb 2>/dev/null || curl -s4m5 ifconfig.me 2>/dev/null)
+    [ -z "$my_ip" ] && my_ip="YOUR_IP"
+    
+    local current_port=$start_port
+    local success_count=0
+    
+    echo -e ""
+    echo -e "${Info} 开始批量添加..."
+    echo -e ""
+    
+    for link in "${links[@]}"; do
+        local proto=$(detect_protocol "$link")
+        if [ "$proto" == "unknown" ]; then
+            echo -e "${Warning} 跳过无法识别的链接: ${link:0:50}..."
+            continue
+        fi
+        
+        # 检查 Reality 协议
+        if [[ "$link" == *"reality"* ]] || [[ "$link" == *"pbk="* ]]; then
+            echo -e "${Warning} 跳过 Reality 协议: ${link:0:50}..."
+            continue
+        fi
+        
+        local parsed=$(parse_node "$link")
+        local target=$(get_target "$proto" "$parsed")
+        IFS='|' read -r target_host target_port <<< "$target"
+        
+        if [ -z "$target_host" ] || [ -z "$target_port" ]; then
+            echo -e "${Warning} 跳过解析失败的链接"
+            continue
+        fi
+        
+        local port_type=$(detect_protocol_type "$proto")
+        
+        # 获取可用端口
+        if [ "$port_mode" == "1" ]; then
+            while ! check_port $current_port; do
+                ((current_port++))
+            done
+            local_port=$current_port
+            ((current_port++))
+        else
+            local_port=$(get_random_port 10000 65535)
+            while ! check_port $local_port; do
+                local_port=$(get_random_port 10000 65535)
+            done
+        fi
+        
+        echo "$local_port" >> "$PORT_CONF"
+        add_relay "$local_port" "$target_host" "$target_port" "$port_type"
+        
+        local relay_link=$(generate_relay_link "$proto" "$parsed" "$my_ip" "$local_port")
+        echo -e "${Info} [${proto^^}] ${target_host}:${target_port} -> :${local_port}"
+        echo -e "    ${Cyan}${relay_link}${Reset}"
+        echo -e ""
+        
+        ((success_count++))
+    done
+    
+    if [ $success_count -gt 0 ]; then
+        restart_gost
+        echo -e "${Info} 批量添加完成! 成功: ${success_count}/${#links[@]}"
+    else
+        echo -e "${Warning} 没有成功添加任何配置"
     fi
 }
 
@@ -1024,13 +1118,16 @@ ${Green}--------------------------------------------------------${Reset}
  ${Green}6.${Reset}  查看日志
 ${Green}--------------------------------------------------------${Reset}
  ${Green}7.${Reset}  添加中转配置
- ${Green}8.${Reset}  查看当前配置
- ${Green}9.${Reset}  删除配置
+ ${Green}8.${Reset}  批量添加中转
+ ${Green}9.${Reset}  查看当前配置
+ ${Green}10.${Reset} 删除配置
+${Green}--------------------------------------------------------${Reset}
+ ${Green}11.${Reset} 安装快捷命令 (gostxray)
 ${Green}--------------------------------------------------------${Reset}
  ${Green}0.${Reset}  退出
 ${Green}========================================================${Reset}
 "
-    read -p " 请选择 [0-9]: " num
+    read -p " 请选择 [0-11]: " num
     
     case "$num" in
         1) install_gost ;;
@@ -1040,8 +1137,10 @@ ${Green}========================================================${Reset}
         5) restart_gost ;;
         6) show_log_menu ;;
         7) add_relay_config ;;
-        8) show_config ;;
-        9) delete_config ;;
+        8) batch_add_relay ;;
+        9) show_config ;;
+        10) delete_config ;;
+        11) install_shortcut ;;
         0) exit 0 ;;
         *) echo -e "${Error} 无效选择" ;;
     esac
