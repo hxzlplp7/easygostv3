@@ -418,32 +418,12 @@ detect_protocol() {
     esac
 }
 
-# 检查是否为不支持中转的协议
+# 检查协议类型并提示
 check_unsupported_protocol() {
     local link="$1"
     local proto="$2"
     
-    # 检查 Reality 协议 - 这个确实无法中转
-    if [[ "$link" == *"reality"* ]] || [[ "$link" == *"pbk="* ]]; then
-        echo -e ""
-        echo -e "${Red}✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖${Reset}"
-        echo -e "${Red}  警告: 检测到 VLESS-Reality 协议!${Reset}"
-        echo -e "${Red}✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖✖${Reset}"
-        echo -e "${Yellow}Reality 协议无法通过中转！${Reset}"
-        echo -e "${Yellow}原因: Reality 会验证服务器 IP，中转后 IP 变化导致验证失败${Reset}"
-        echo -e ""
-        echo -e "${Cyan}建议使用以下可中转协议:${Reset}"
-        echo -e "  ✓ VLESS + WS + TLS"
-        echo -e "  ✓ VMess + WS + TLS"
-        echo -e "  ✓ Trojan"
-        echo -e "  ✓ Shadowsocks"
-        echo -e "  ✓ Hysteria2 (UDP)"
-        echo -e "  ✓ TUIC (UDP)"
-        echo -e ""
-        return 1
-    fi
-    
-    # UDP 协议提示 (现在支持了)
+    # UDP 协议提示
     if [[ "$proto" == "hysteria2" ]] || [[ "$proto" == "tuic" ]]; then
         echo -e ""
         echo -e "${Cyan}提示: ${proto^^} 使用 UDP 协议${Reset}"
@@ -905,8 +885,8 @@ batch_add_relay() {
     
     echo -e ""
     echo -e "${Info} 端口分配方式:"
-    echo -e "[1] 从指定端口开始递增"
-    echo -e "[2] 随机分配"
+    echo -e "[1] 从指定端口开始递增 + Devil 管理"
+    echo -e "[2] 随机分配 + Devil 管理"
     read -p "请选择 [默认1]: " port_mode
     port_mode=${port_mode:-1}
     
@@ -933,12 +913,6 @@ batch_add_relay() {
             continue
         fi
         
-        # 检查 Reality 协议
-        if [[ "$link" == *"reality"* ]] || [[ "$link" == *"pbk="* ]]; then
-            echo -e "${Warning} 跳过 Reality 协议: ${link:0:50}..."
-            continue
-        fi
-        
         local parsed=$(parse_node "$link")
         local target=$(get_target "$proto" "$parsed")
         IFS='|' read -r target_host target_port <<< "$target"
@@ -950,7 +924,7 @@ batch_add_relay() {
         
         local port_type=$(detect_protocol_type "$proto")
         
-        # 获取可用端口
+        # 获取可用端口并添加到 devil
         if [ "$port_mode" == "1" ]; then
             while ! check_port $current_port; do
                 ((current_port++))
@@ -964,11 +938,14 @@ batch_add_relay() {
             done
         fi
         
+        # 使用 devil 添加端口
+        add_devil_port "$local_port" "$port_type" "gost-batch"
+        
         echo "$local_port" >> "$PORT_CONF"
         add_relay "$local_port" "$target_host" "$target_port" "$port_type"
         
         local relay_link=$(generate_relay_link "$proto" "$parsed" "$my_ip" "$local_port")
-        echo -e "${Info} [${proto^^}] ${target_host}:${target_port} -> :${local_port}"
+        echo -e "${Info} [${proto^^}] ${target_host}:${target_port} -> :${local_port} (${port_type})"
         echo -e "    ${Cyan}${relay_link}${Reset}"
         echo -e ""
         
@@ -1107,7 +1084,7 @@ show_menu() {
 ${Green}========================================================${Reset}
    GOST v3 中转脚本 - Serv00/HostUno 版 ${Red}[${shell_version}]${Reset}
 ${Green}========================================================${Reset}
- ${Cyan}支持: VLESS VMess Trojan SS Hy2 TUIC (不支持: Reality)${Reset}
+ ${Cyan}支持: VLESS VMess Trojan SS Hy2 TUIC Reality${Reset}
 ${Green}--------------------------------------------------------${Reset}
  ${Green}1.${Reset}  安装 GOST v3
  ${Green}2.${Reset}  卸载 GOST v3
