@@ -1,5 +1,5 @@
 #!/bin/bash
-# GOST v3 + Xray 中转脚本 - Serv00/HostUno 版本
+# GOST v3 中转脚本 - Serv00/HostUno 版本
 # 适用于 FreeBSD 非 root 环境
 # 支持协议: VLESS, VMess, Trojan, Shadowsocks, Hysteria2, TUIC, SOCKS, HTTP
 # 快捷命令: gostxray
