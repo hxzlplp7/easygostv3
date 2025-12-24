@@ -259,7 +259,7 @@ parse_vless() {
     port="${port%%#*}"
     
     local params="${rest#*\?}"
-    local type="" security="" sni="" path="" flow=""
+    local type="" security="" sni="" path="" flow="" fp="" pbk="" sid=""
     while IFS='=' read -r key value; do
         value=$(url_decode "$value")
         case $key in
@@ -268,10 +268,13 @@ parse_vless() {
             sni) sni="$value" ;;
             path) path="$value" ;;
             flow) flow="$value" ;;
+            fp) fp="$value" ;;
+            pbk) pbk="$value" ;;
+            sid) sid="$value" ;;
         esac
     done <<< "$(echo "$params" | tr '&' '\n' | cut -d'#' -f1)"
     
-    echo "vless|$uuid|$host|$port|$type|$security|$sni|$path|$flow"
+    echo "vless|$uuid|$host|$port|$type|$security|$sni|$path|$flow|$fp|$pbk|$sid"
 }
 
 parse_vmess() {
@@ -478,6 +481,10 @@ generate_relay_link() {
             [ -n "${p[5]}" ] && link+="security=${p[5]}&"
             [ -n "${p[6]}" ] && link+="sni=${p[6]}&"
             [ -n "${p[7]}" ] && link+="path=${p[7]}&"
+            [ -n "${p[8]}" ] && link+="flow=${p[8]}&"
+            [ -n "${p[9]}" ] && link+="fp=${p[9]}&"
+            [ -n "${p[10]}" ] && link+="pbk=${p[10]}&"
+            [ -n "${p[11]}" ] && link+="sid=${p[11]}&"
             echo "${link%&}#Relay-${p[2]}"
             ;;
         vmess)
