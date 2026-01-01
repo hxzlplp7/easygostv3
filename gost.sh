@@ -826,66 +826,7 @@ add_relay_config() {
     read -p "请选择 [默认1]: " relay_type
     relay_type=${relay_type:-1}
     
-    echo -e ""
-    echo -e "${Info} 请选择配置方式:"
-    echo -e "-----------------------------------"
-    echo -e "[1] 粘贴节点链接 (自动解析)"
-    echo -e "[2] 手动输入目标地址和端口"
-    echo -e "-----------------------------------"
-    read -p "请选择 [默认1]: " input_type
-    input_type=${input_type:-1}
-    
-    local protocol="" parsed=""
-    
-    if [ "$input_type" == "1" ]; then
-        echo -e ""
-        read -p "请粘贴节点链接: " node_link
-        
-        if [ -z "$node_link" ]; then
-            echo -e "${Error} 节点链接不能为空"
-            return 1
-        fi
-        
-        protocol=$(detect_protocol "$node_link")
-        if [ "$protocol" == "unknown" ]; then
-            echo -e "${Error} 无法识别的协议类型"
-            return 1
-        fi
-        
-        echo -e "${Info} 检测到协议: ${Green_font_prefix}${protocol^^}${Font_color_suffix}"
-        
-        parsed=$(parse_node_link "$node_link")
-        local target_info=$(get_target_from_parsed "$protocol" "$parsed")
-        IFS='|' read -r target_host target_port <<< "$target_info"
-        
-        if [ -z "$target_host" ] || [ -z "$target_port" ]; then
-            echo -e "${Error} 解析节点链接失败"
-            return 1
-        fi
-        
-        echo -e "${Info} 目标地址: ${Green_font_prefix}${target_host}:${target_port}${Font_color_suffix}"
-    else
-        read -p "请输入目标地址 (IP或域名): " target_host
-        read -p "请输入目标端口: " target_port
-        
-        if [ -z "$target_host" ] || [ -z "$target_port" ]; then
-            echo -e "${Error} 目标地址和端口不能为空"
-            return 1
-        fi
-    fi
-    
-    # 配置本地端口
-    if ! read_port_config; then
-        return 1
-    fi
-    
-    # 获取本机IP
-    local local_ip=$(get_ip)
-    if [ -z "$local_ip" ]; then
-        echo -e "${Warning} 无法获取本机公网IP，请稍后手动替换链接中的IP"
-        local_ip="YOUR_IP"
-    fi
-    
+    # Check and Install Service First
     if [ "$relay_type" == "1" ]; then
         if [ ! -f "/usr/bin/gost3" ]; then
             echo -e "${Warning} GOST v3 未安装，是否立即安装? [Y/n]"
@@ -896,9 +837,6 @@ add_relay_config() {
                 return 1
             fi
         fi
-        add_gost3_relay "$local_port" "$target_host" "$target_port"
-        systemctl restart gost3
-        echo -e "${Info} GOST v3 中转配置已添加"
     else
         if ! command -v xray &> /dev/null; then
             echo -e "${Warning} Xray 未安装，是否立即安装? [Y/n]"
@@ -909,28 +847,134 @@ add_relay_config() {
                 return 1
             fi
         fi
-        add_xray_dokodemo "$local_port" "$target_host" "$target_port"
-        systemctl restart xray
-        echo -e "${Info} Xray 任意门配置已添加"
+    fi
+
+    echo -e ""
+    echo -e "${Info} 请选择配置方式:"
+    echo -e "-----------------------------------"
+    echo -e "[1] 粘贴节点链接 (自动解析)"
+    echo -e "[2] 手动输入目标地址和端口"
+    echo -e "-----------------------------------"
+    read -p "请选择 [默认1]: " input_type
+    input_type=${input_type:-1}
+    
+    local node_links=()
+    local target_host=""
+    local target_port=""
+    local protocol=""
+    local parsed=""
+    
+    if [ "$input_type" == "1" ]; then
+        echo -e ""
+        echo -e "${Info} 请粘贴节点链接 (支持批量多行粘贴): "
+        
+        # Read multiline input
+        read -r first_link
+        [ -n "$first_link" ] && node_links+=("$first_link")
+        while read -r -t 0.05 line; do
+            [ -n "$line" ] && node_links+=("$line")
+        done
+        
+        if [ ${#node_links[@]} -eq 0 ]; then
+            echo -e "${Error} 节点链接不能为空"
+            return 1
+        fi
+        
+        echo -e "${Info} 共获取到 ${#node_links[@]} 个链接"
+    else
+        read -p "请输入目标地址 (IP或域名): " target_host
+        read -p "请输入目标端口: " target_port
+        
+        if [ -z "$target_host" ] || [ -z "$target_port" ]; then
+            echo -e "${Error} 目标地址和端口不能为空"
+            return 1
+        fi
+        
+        # Tag for manual mode
+        node_links+=("MANUAL_MODE")
     fi
     
-    echo -e ""
-    echo -e "${Green_font_prefix}===========================================${Font_color_suffix}"
-    echo -e "${Info} 中转配置完成!"
-    echo -e "${Green_font_prefix}===========================================${Font_color_suffix}"
-    echo -e " 本机IP:      ${Cyan_font_prefix}${local_ip}${Font_color_suffix}"
-    echo -e " 本地端口:    ${Cyan_font_prefix}${local_port}${Font_color_suffix}"
-    echo -e " 目标地址:    ${target_host}:${target_port}"
-    echo -e "${Green_font_prefix}===========================================${Font_color_suffix}"
+    # Get Local IP
+    local local_ip=$(get_ip)
+    if [ -z "$local_ip" ]; then
+        echo -e "${Warning} 无法获取本机公网IP，请稍后手动替换链接中的IP"
+        local_ip="YOUR_IP"
+    fi
     
-    # 如果是通过节点链接添加，生成中转后的链接
-    if [ "$input_type" == "1" ] && [ -n "$parsed" ]; then
-        local relay_link=$(generate_relay_link "$protocol" "$parsed" "$local_ip" "$local_port")
+    local process_count=1
+    
+    for link_item in "${node_links[@]}"; do
+        if [ "$input_type" == "1" ]; then
+            echo -e ""
+            echo -e "${Info} [${process_count}/${#node_links[@]}] 正在处理..."
+            local node_link="$link_item"
+            
+            protocol=$(detect_protocol "$node_link")
+            if [ "$protocol" == "unknown" ]; then
+                echo -e "${Error} 无法识别的协议类型: ${node_link:0:30}..."
+                ((process_count++))
+                continue
+            fi
+            
+            echo -e "${Info} 检测到协议: ${Green_font_prefix}${protocol^^}${Font_color_suffix}"
+            
+            parsed=$(parse_node_link "$node_link")
+            local target_info=$(get_target_from_parsed "$protocol" "$parsed")
+            IFS='|' read -r target_host target_port <<< "$target_info"
+            
+            if [ -z "$target_host" ] || [ -z "$target_port" ]; then
+                echo -e "${Error} 解析节点链接失败"
+                ((process_count++))
+                continue
+            fi
+            
+            echo -e "${Info} 目标地址: ${Green_font_prefix}${target_host}:${target_port}${Font_color_suffix}"
+        else
+            echo -e "${Info} 正在处理手动配置..."
+        fi
+        
+        # Configure Port
+        if ! read_port_config; then
+            echo -e "${Warning} 跳过当前配置"
+            ((process_count++))
+            continue
+        fi
+        
+        if [ "$relay_type" == "1" ]; then
+            add_gost3_relay "$local_port" "$target_host" "$target_port"
+            echo -e "${Info} GOST v3 中转配置已添加"
+        else
+            add_xray_dokodemo "$local_port" "$target_host" "$target_port"
+            echo -e "${Info} Xray 任意门配置已添加"
+        fi
+        
         echo -e ""
-        echo -e "${Info} 中转后的节点链接:"
-        echo -e "${Green_font_prefix}-------------------------------------------${Font_color_suffix}"
-        echo -e "${Cyan_font_prefix}${relay_link}${Font_color_suffix}"
-        echo -e "${Green_font_prefix}-------------------------------------------${Font_color_suffix}"
+        echo -e "${Green_font_prefix}===========================================${Font_color_suffix}"
+        echo -e "${Info} 中转配置完成!"
+        echo -e "${Green_font_prefix}===========================================${Font_color_suffix}"
+        echo -e " 本机IP:      ${Cyan_font_prefix}${local_ip}${Font_color_suffix}"
+        echo -e " 本地端口:    ${Cyan_font_prefix}${local_port}${Font_color_suffix}"
+        echo -e " 目标地址:    ${target_host}:${target_port}"
+        echo -e "${Green_font_prefix}===========================================${Font_color_suffix}"
+        
+        # Generate new link if applicable
+        if [ "$input_type" == "1" ] && [ -n "$parsed" ]; then
+            local relay_link=$(generate_relay_link "$protocol" "$parsed" "$local_ip" "$local_port")
+            echo -e ""
+            echo -e "${Info} 中转后的节点链接:"
+            echo -e "${Green_font_prefix}-------------------------------------------${Font_color_suffix}"
+            echo -e "${Cyan_font_prefix}${relay_link}${Font_color_suffix}"
+            echo -e "${Green_font_prefix}-------------------------------------------${Font_color_suffix}"
+        fi
+        
+        ((process_count++))
+    done
+    
+    # Restart Services
+    if [ "$relay_type" == "1" ]; then
+        systemctl restart gost3
+    else
+        systemctl restart xray
     fi
     
     echo -e ""
