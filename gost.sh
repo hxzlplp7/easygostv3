@@ -1,3 +1,391 @@
+﻿#!/bin/bash
+main
+# ==================== 格式化显示函数 ====================
+
+format_vless() {
+    local uuid="$1" host="$2" port="$3" type="$4" security="$5" sni="$6"
+    local path="$7" flow="$8" host_param="$9" fp="${10}" pbk="${11}" sid="${12}"
+    
+    echo -e "${Cyan_font_prefix}📍 基本信息:${Font_color_suffix}"
+    echo -e "   UUID      : ${Green_font_prefix}$uuid${Font_color_suffix}"
+    echo -e "   服务器    : ${Yellow_font_prefix}$host${Font_color_suffix}"
+    echo -e "   端口      : ${Yellow_font_prefix}$port${Font_color_suffix}"
+    
+    if [ -n "$security" ] || [ -n "$flow" ]; then
+        echo -e ""
+        echo -e "${Cyan_font_prefix}🔐 安全配置:${Font_color_suffix}"
+        [ -n "$security" ] && echo -e "   传输协议  : $security"
+        [ -n "$flow" ] && echo -e "   Flow      : $flow"
+        [ -n "$sni" ] && echo -e "   SNI       : $sni"
+        [ -n "$fp" ] && echo -e "   指纹      : $fp"
+        [ -n "$pbk" ] && echo -e "   公钥(PBK) : ${pbk:0:16}..."
+        [ -n "$sid" ] && echo -e "   SID       : $sid"
+    fi
+    
+    if [ -n "$type" ] || [ -n "$path" ]; then
+        echo -e ""
+        echo -e "${Cyan_font_prefix}🌐 传输配置:${Font_color_suffix}"
+        [ -n "$type" ] && echo -e "   类型      : $type"
+        [ -n "$path" ] && echo -e "   路径      : $path"
+        [ -n "$host_param" ] && echo -e "   Host      : $host_param"
+    fi
+}
+
+format_vmess() {
+    local uuid="$1" host="$2" port="$3" net="$4" tls="$5" sni="$6"
+    local path="$7" aid="$8" ps="$9"
+    
+    echo -e "${Cyan_font_prefix}📍 基本信息:${Font_color_suffix}"
+    echo -e "   UUID      : ${Green_font_prefix}$uuid${Font_color_suffix}"
+    echo -e "   服务器    : ${Yellow_font_prefix}$host${Font_color_suffix}"
+    echo -e "   端口      : ${Yellow_font_prefix}$port${Font_color_suffix}"
+    [ -n "$ps" ] && echo -e "   备注名    : $ps"
+    [ -n "$aid" ] && echo -e "   AlterID   : $aid"
+    
+    if [ -n "$net" ] || [ -n "$path" ]; then
+        echo -e ""
+        echo -e "${Cyan_font_prefix}🌐 传输配置:${Font_color_suffix}"
+        [ -n "$net" ] && echo -e "   网络类型  : $net"
+        [ -n "$path" ] && echo -e "   路径      : $path"
+    fi
+    
+    if [ -n "$tls" ]; then
+        echo -e ""
+        echo -e "${Cyan_font_prefix}🔐 安全配置:${Font_color_suffix}"
+        echo -e "   TLS       : $tls"
+        [ -n "$sni" ] && echo -e "   SNI       : $sni"
+    fi
+}
+
+format_hysteria2() {
+    local password="$1" host="$2" port="$3" sni="$4" insecure="$5" obfs="$6" obfs_password="$7"
+    
+    echo -e "${Cyan_font_prefix}📍 基本信息:${Font_color_suffix}"
+    echo -e "   密码      : ${Green_font_prefix}${password:0:16}...${Font_color_suffix}"
+    echo -e "   服务器    : ${Yellow_font_prefix}$host${Font_color_suffix}"
+    echo -e "   端口      : ${Yellow_font_prefix}$port${Font_color_suffix}"
+    
+    if [ -n "$sni" ] || [ -n "$insecure" ]; then
+        echo -e ""
+        echo -e "${Cyan_font_prefix}🔐 安全配置:${Font_color_suffix}"
+        [ -n "$sni" ] && echo -e "   SNI       : $sni"
+        [ -n "$insecure" ] && echo -e "   验证证书  : $([ "$insecure" == "1" ] && echo "否" || echo "是")"
+    fi
+    
+    if [ -n "$obfs" ]; then
+        echo -e ""
+        echo -e "${Cyan_font_prefix}🌐 混淆配置:${Font_color_suffix}"
+        echo -e "   混淆类型  : $obfs"
+        [ -n "$obfs_password" ] && echo -e "   混淆密码  : ${obfs_password:0:12}..."
+    fi
+}
+
+format_tuic() {
+    local uuid="$1" password="$2" host="$3" port="$4" sni="$5" alpn="$6" cc="$7"
+    
+    echo -e "${Cyan_font_prefix}📍 基本信息:${Font_color_suffix}"
+    echo -e "   UUID      : ${Green_font_prefix}$uuid${Font_color_suffix}"
+    echo -e "   密码      : ${Green_font_prefix}${password:0:12}...${Font_color_suffix}"
+    echo -e "   服务器    : ${Yellow_font_prefix}$host${Font_color_suffix}"
+    echo -e "   端口      : ${Yellow_font_prefix}$port${Font_color_suffix}"
+    
+    if [ -n "$sni" ] || [ -n "$alpn" ]; then
+        echo -e ""
+        echo -e "${Cyan_font_prefix}🔐 安全配置:${Font_color_suffix}"
+        [ -n "$sni" ] && echo -e "   SNI       : $sni"
+        [ -n "$alpn" ] && echo -e "   ALPN      : $alpn"
+    fi
+    
+    if [ -n "$cc" ]; then
+        echo -e ""
+        echo -e "${Cyan_font_prefix}🌐 传输配置:${Font_color_suffix}"
+        echo -e "   拥塞控制  : $cc"
+    fi
+}
+
+format_trojan() {
+    local password="$1" host="$2" port="$3" sni="$4" type="$5" path="$6" host_param="$7"
+    
+    echo -e "${Cyan_font_prefix}📍 基本信息:${Font_color_suffix}"
+    echo -e "   密码      : ${Green_font_prefix}${password:0:16}...${Font_color_suffix}"
+    echo -e "   服务器    : ${Yellow_font_prefix}$host${Font_color_suffix}"
+    echo -e "   端口      : ${Yellow_font_prefix}$port${Font_color_suffix}"
+    
+    if [ -n "$sni" ]; then
+        echo -e ""
+        echo -e "${Cyan_font_prefix}🔐 安全配置:${Font_color_suffix}"
+        echo -e "   SNI       : $sni"
+    fi
+    
+    if [ -n "$type" ] || [ -n "$path" ]; then
+        echo -e ""
+        echo -e "${Cyan_font_prefix}🌐 传输配置:${Font_color_suffix}"
+        [ -n "$type" ] && echo -e "   类型      : $type"
+        [ -n "$path" ] && echo -e "   路径      : $path"
+        [ -n "$host_param" ] && echo -e "   Host      : $host_param"
+    fi
+}
+
+format_ss() {
+    local method="$1" password="$2" host="$3" port="$4"
+    
+    echo -e "${Cyan_font_prefix}📍 基本信息:${Font_color_suffix}"
+    echo -e "   加密方法  : ${Green_font_prefix}$method${Font_color_suffix}"
+    echo -e "   密码      : ${Green_font_prefix}${password:0:16}...${Font_color_suffix}"
+    echo -e "   服务器    : ${Yellow_font_prefix}$host${Font_color_suffix}"
+    echo -e "   端口      : ${Yellow_font_prefix}$port${Font_color_suffix}"
+}
+
+# 格式化显示调度函数
+format_parsed_result() {
+    local protocol="$1"
+    local parsed="$2"
+    
+    IFS='|' read -ra fields <<< "$parsed"
+    
+    case "$protocol" in
+        vless) format_vless "${fields[@]}" ;;
+        vmess) format_vmess "${fields[@]}" ;;
+        hysteria2) format_hysteria2 "${fields[@]}" ;;
+        tuic) format_tuic "${fields[@]}" ;;
+        trojan) format_trojan "${fields[@]}" ;;
+        ss) format_ss "${fields[@]}" ;;
+        *)
+            echo -e "${Cyan_font_prefix}解析结果:${Font_color_suffix}"
+            echo -e "${parsed}"
+            ;;
+    esac
+}
+
+# ==================== 链接重建函数 ====================
+
+rebuild_vless_link() {
+    IFS='|' read -ra fields <<< "$1"
+    local uuid="${fields[0]}" host="${fields[1]}" port="${fields[2]}" type="${fields[3]}"
+    local security="${fields[4]}" sni="${fields[5]}" path="${fields[6]}" flow="${fields[7]}"
+    local host_param="${fields[8]}" fp="${fields[9]}" pbk="${fields[10]}" sid="${fields[11]}"
+    
+    local link="vless://${uuid}@${host}:${port}"
+    local params=""
+    
+    [ -n "$type" ] && params="${params}&type=${type}"
+    [ -n "$security" ] && params="${params}&security=${security}"
+    [ -n "$encryption" ] && params="${params}&encryption=none"
+    [ -n "$sni" ] && params="${params}&sni=${sni}"
+    [ -n "$flow" ] && params="${params}&flow=${flow}"
+    [ -n "$fp" ] && params="${params}&fp=${fp}"
+    [ -n "$pbk" ] && params="${params}&pbk=${pbk}"
+    [ -n "$sid" ] && params="${params}&sid=${sid}"
+    [ -n "$path" ] && params="${params}&path=${path}"
+    [ -n "$host_param" ] && params="${params}&host=${host_param}"
+    
+    params="${params#&}"
+    [ -n "$params" ] && link="${link}?${params}"
+    link="${link}#Relay-${host}"
+    
+    echo "$link"
+}
+
+rebuild_vmess_link() {
+    IFS='|' read -ra fields <<< "$1"
+    local uuid="${fields[0]}" host="${fields[1]}" port="${fields[2]}" net="${fields[3]}"
+    local tls="${fields[4]}" sni="${fields[5]}" path="${fields[6]}" aid="${fields[7]}" ps="${fields[8]}"
+    
+    local json=$(cat <<EOF
+{
+  "v": "2",
+  "ps": "${ps:-Relay-${host}}",
+  "add": "${host}",
+  "port": "${port}",
+  "id": "${uuid}",
+  "aid": "${aid:-0}",
+  "net": "${net:-tcp}",
+  "type": "none",
+  "host": "",
+  "path": "${path}",
+  "tls": "${tls}",
+  "sni": "${sni}"
+}
+EOF
+)
+    
+    local encoded=$(echo -n "$json" | base64 -w 0 2>/dev/null || echo -n "$json" | base64)
+    echo "vmess://${encoded}"
+}
+
+rebuild_hysteria2_link() {
+    IFS='|' read -ra fields <<< "$1"
+    local password="${fields[0]}" host="${fields[1]}" port="${fields[2]}" sni="${fields[3]}"
+    local insecure="${fields[4]}" obfs="${fields[5]}" obfs_password="${fields[6]}"
+    
+    local link="hysteria2://${password}@${host}:${port}"
+    local params=""
+    
+    [ -n "$sni" ] && params="${params}&sni=${sni}"
+    [ -n "$insecure" ] && params="${params}&insecure=${insecure}"
+    [ -n "$obfs" ] && params="${params}&obfs=${obfs}"
+    [ -n "$obfs_password" ] && params="${params}&obfs-password=${obfs_password}"
+    
+    params="${params#&}"
+    [ -n "$params" ] && link="${link}?${params}"
+    link="${link}#Relay-${host}"
+    
+    echo "$link"
+}
+
+rebuild_tuic_link() {
+    IFS='|' read -ra fields <<< "$1"
+    local uuid="${fields[0]}" password="${fields[1]}" host="${fields[2]}" port="${fields[3]}"
+    local sni="${fields[4]}" alpn="${fields[5]}" cc="${fields[6]}"
+    
+    local link="tuic://${uuid}:${password}@${host}:${port}"
+    local params=""
+    
+    [ -n "$sni" ] && params="${params}&sni=${sni}"
+    [ -n "$alpn" ] && params="${params}&alpn=${alpn}"
+    [ -n "$cc" ] && params="${params}&congestion_control=${cc}"
+    
+    params="${params#&}"
+    [ -n "$params" ] && link="${link}?${params}"
+    link="${link}#Relay-${host}"
+    
+    echo "$link"
+}
+
+rebuild_trojan_link() {
+    IFS='|' read -ra fields <<< "$1"
+    local password="${fields[0]}" host="${fields[1]}" port="${fields[2]}" sni="${fields[3]}"
+    local type="${fields[4]}" path="${fields[5]}" host_param="${fields[6]}"
+    
+    local link="trojan://${password}@${host}:${port}"
+    local params=""
+    
+    [ -n "$sni" ] && params="${params}&sni=${sni}"
+    [ -n "$type" ] && params="${params}&type=${type}"
+    [ -n "$path" ] && params="${params}&path=${path}"
+    [ -n "$host_param" ] && params="${params}&host=${host_param}"
+    
+    params="${params#&}"
+    [ -n "$params" ] && link="${link}?${params}"
+    link="${link}#Relay-${host}"
+    
+    echo "$link"
+}
+
+rebuild_ss_link() {
+    IFS='|' read -ra fields <<< "$1"
+    local method="${fields[0]}" password="${fields[1]}" host="${fields[2]}" port="${fields[3]}"
+    
+    local userinfo=$(echo -n "${method}:${password}" | base64 -w 0 2>/dev/null || echo -n "${method}:${password}" | base64)
+    echo "ss://${userinfo}@${host}:${port}#Relay-${host}"
+}
+
+# 链接重建调度函数
+rebuild_link() {
+    local protocol="$1"
+    local parsed="$2"
+    
+    case "$protocol" in
+        vless) rebuild_vless_link "$parsed" ;;
+        vmess) rebuild_vmess_link "$parsed" ;;
+        hysteria2) rebuild_hysteria2_link "$parsed" ;;
+        tuic) rebuild_tuic_link "$parsed" ;;
+        trojan) rebuild_trojan_link "$parsed" ;;
+        ss) rebuild_ss_link "$parsed" ;;
+        *)
+            echo ""
+            ;;
+    esac
+}
+
+# ==================== 节点信息替换函数 ====================
+
+replace_node_info() {
+    local protocol="$1"
+    local parsed="$2"
+    
+    echo -e ""
+    echo -e "${Info} 是否需要替换节点信息？[y/N]"
+    read -p "" need_replace
+    
+    if [[ ! $need_replace =~ ^[Yy]$ ]]; then
+        return 1
+    fi
+    
+    echo -e "${Info} 请选择要替换的字段："
+    echo -e "  ${Green_font_prefix}[1]${Font_color_suffix} 服务器地址"
+    echo -e "  ${Green_font_prefix}[2]${Font_color_suffix} 端口"
+    echo -e "  ${Green_font_prefix}[3]${Font_color_suffix} 服务器地址 + 端口"
+    echo -e "  ${Green_font_prefix}[0]${Font_color_suffix} 取消"
+    
+    read -p "请选择 [0-3]: " choice
+    
+    IFS='|' read -ra fields <<< "$parsed"
+    
+    case $choice in
+        1)
+            read -p "请输入新的服务器地址: " new_host
+            # 根据协议调整字段位置
+            case "$protocol" in
+                vless) fields[1]="$new_host" ;;
+                vmess) fields[1]="$new_host" ;;
+                hysteria2) fields[1]="$new_host" ;;
+                tuic) fields[2]="$new_host" ;;
+                trojan) fields[1]="$new_host" ;;
+                ss) fields[2]="$new_host" ;;
+            esac
+            ;;
+        2)
+            read -p "请输入新的端口: " new_port
+            case "$protocol" in
+                vless) fields[2]="$new_port" ;;
+                vmess) fields[2]="$new_port" ;;
+                hysteria2) fields[2]="$new_port" ;;
+                tuic) fields[3]="$new_port" ;;
+                trojan) fields[2]="$new_port" ;;
+                ss) fields[3]="$new_port" ;;
+            esac
+            ;;
+        3)
+            read -p "请输入新的服务器地址: " new_host
+            read -p "请输入新的端口: " new_port
+            case "$protocol" in
+                vless)
+                    fields[1]="$new_host"
+                    fields[2]="$new_port"
+                    ;;
+                vmess)
+                    fields[1]="$new_host"
+                    fields[2]="$new_port"
+                    ;;
+                hysteria2)
+                    fields[1]="$new_host"
+                    fields[2]="$new_port"
+                    ;;
+                tuic)
+                    fields[2]="$new_host"
+                    fields[3]="$new_port"
+                    ;;
+                trojan)
+                    fields[1]="$new_host"
+                    fields[2]="$new_port"
+                    ;;
+                ss)
+                    fields[2]="$new_host"
+                    fields[3]="$new_port"
+                    ;;
+            esac
+            ;;
+        0|*)
+            return 1
+            ;;
+    esac
+    
+    # 重新组合
+    parsed=$(IFS='|'; echo "${fields[*]}")
+    echo "$parsed"
+    return 0
+}
 #!/bin/bash
 # GOST v3 + Xray 任意门 中转脚本
 # 支持协议: VLESS, VMess, Trojan, Shadowsocks, Hysteria2, TUIC, AnyTLS, SOCKS, HTTP
@@ -1376,12 +1764,13 @@ test_parse() {
     
     local index=1
     for test_link in "${test_links[@]}"; do
-        if [ ${#test_links[@]} -gt 1 ]; then
-            echo -e "${Info} ========== [${index}/${#test_links[@]}] =========="
-        fi
+        # 美化的分隔线和标题
+        echo -e "${Green_font_prefix}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${Font_color_suffix}"
         
         local protocol=$(detect_protocol "$test_link")
-        echo -e "${Info} 协议类型: ${Green_font_prefix}${protocol^^}${Font_color_suffix}"
+        echo -e "  ${Cyan_font_prefix}节点 #${index} - ${protocol^^}${Font_color_suffix}"
+        echo -e "${Green_font_prefix}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${Font_color_suffix}"
+        echo -e ""
         
         if [ "$protocol" == "unknown" ]; then
             echo -e "${Error} 无法识别的协议"
@@ -1391,15 +1780,30 @@ test_parse() {
         fi
         
         local parsed=$(parse_node_link "$test_link")
-        echo -e "${Info} 解析结果:"
-        echo -e "${Cyan_font_prefix}${parsed}${Font_color_suffix}"
         
+        # 使用格式化显示
+        format_parsed_result "$protocol" "$parsed"
+        
+        # 显示目标地址
         local target_info=$(get_target_from_parsed "$protocol" "$parsed")
         IFS='|' read -r target_host target_port <<< "$target_info"
         echo -e ""
-        echo -e "${Info} 目标地址: ${Green_font_prefix}${target_host}:${target_port}${Font_color_suffix}"
-        echo -e ""
+        echo -e "${Green_font_prefix}✅ 目标地址: ${target_host}:${target_port}${Font_color_suffix}"
         
+        # 节点信息替换
+        local new_parsed=$(replace_node_info "$protocol" "$parsed")
+        if [ $? -eq 0 ]; then
+            # 重建链接
+            local new_link=$(rebuild_link "$protocol" "$new_parsed")
+            echo -e ""
+            echo -e "${Green_font_prefix}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${Font_color_suffix}"
+            echo -e "${Cyan_font_prefix}📋 新链接已生成:${Font_color_suffix}"
+            echo -e "${Green_font_prefix}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${Font_color_suffix}"
+            echo -e "${Yellow_font_prefix}${new_link}${Font_color_suffix}"
+            echo -e "${Green_font_prefix}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${Font_color_suffix}"
+        fi
+        
+        echo -e ""
         ((index++))
     done
     
