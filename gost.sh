@@ -171,7 +171,13 @@ read_port_config() {
     echo -e "[2] 指定端口范围自动分配"
     echo -e "[3] 手动指定端口"
     echo -e "-----------------------------------"
+    
+    # 清空输入缓冲区
+    while read -r -t 0.1 _discard; do :; done
+    
     read -p "请选择 [默认1]: " port_mode
+    # 清理回车符和空格
+    port_mode=$(echo "$port_mode" | tr -d '\r\n' | xargs)
     port_mode=${port_mode:-1}
     
     # Validate input is a number between 1-3
@@ -383,7 +389,10 @@ parse_hysteria2() {
     local host_port="${auth_host#*@}"
     local host="${host_port%%:*}"
     local port="${host_port##*:}"
+    # 清理端口中的特殊字符 (/, #, ? 等)
+    port="${port%%/*}"
     port="${port%%#*}"
+    port="${port%%\?*}"
     
     local sni="" insecure="" obfs="" obfs_password=""
     while IFS='=' read -r key value; do
@@ -413,7 +422,10 @@ parse_tuic() {
     local host_port="${rest%%\?*}"
     local host="${host_port%%:*}"
     local port="${host_port##*:}"
+    # 清理端口中的特殊字符 (/, #, ? 等)
+    port="${port%%/*}"
     port="${port%%#*}"
+    port="${port%%\?*}"
     
     local params="${rest#*\?}"
     local sni="" alpn="" congestion_control="" udp_relay_mode="" allow_insecure=""
